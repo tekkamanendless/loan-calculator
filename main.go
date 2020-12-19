@@ -2,45 +2,173 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"strconv"
 	"strings"
 	"time"
+
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
 )
 
-func main() {
-	loan := Loan{
-		Amount:    39125,
-		Rate:      4.99,
-		Months:    20 * 12,
-		Payment:   187.48,
-		StartDate: "2019-10-01",
-	}
-	extras := []Extra{
-		{
-			Frequency: "monthly",
-			Amount:    52.52,
-			StartDate: "2019-10-01",
-			EndDate:   "2099-01-01",
-		},
-		{
-			Frequency: "once",
-			StartDate: "2020-11-10",
-			Amount:    12000,
-		},
-		{
-			Frequency: "once",
-			StartDate: "2020-12-20",
-			Amount:    5000,
-		},
-	}
-	schedule := Calculate(loan, extras)
-	fmt.Printf("%3s   %10s   %8s  %8s   %8s\n", "", "date", "principal", "interest", "remaining")
-	for i, payment := range schedule {
-		fmt.Printf("%3d   %10s   %8.2f   %8.2f   %8.2f\n", i, payment.Date.Format("2006-01-02"), payment.Principal, payment.Interest, payment.Remaining)
-	}
-	fmt.Printf("----\n")
-	fmt.Printf("Total interest paid: %8.2f\n", schedule[len(schedule)-1].InterestPaid)
+func help() {
+	fmt.Printf(strings.TrimSpace(`
+Usage:
+loan-calculator <loan> [<payment> [...]]
+
+<loan> is of the form:
+   amount <amount> rate <rate> months <months> payment <payment> [starting <date>]
+
+<payment> is of the form:
+   <amount> monthly [starting <date>] [ending <date>]
+	<amount> once on <date>
+
+Example:
+   loan-calculator 'amount 39,125.00 rate 4.99 months 240 payment 187.48 starting 2020-10-01' '52.52 monthly' '12,000 once on 2020-11-10' '5,000 once on 2020-12-20'
+`) + "\n")
+	os.Exit(1)
 }
 
+func main() {
+	var loan Loan
+	var extras []Extra
+
+	args := os.Args[1:]
+	if len(args) == 0 {
+		fmt.Printf("Missing loan information.\n")
+		help()
+	}
+	{
+		input := strings.TrimSpace(args[0])
+		parts := strings.Split(input, " ")
+		for i := 0; i < len(parts); i++ {
+			part := strings.TrimSpace(parts[i])
+			switch part {
+			case "amount":
+				i++
+				part = strings.TrimSpace(parts[i])
+				v, err := strconv.ParseFloat(strings.ReplaceAll(part, ",", ""), 64)
+				if err != nil {
+					help()
+					panic(err)
+				}
+				loan.Amount = v
+			case "rate":
+				i++
+				part = strings.TrimSpace(parts[i])
+				v, err := strconv.ParseFloat(strings.ReplaceAll(part, ",", ""), 64)
+				if err != nil {
+					help()
+					panic(err)
+				}
+				loan.Rate = v
+			case "months":
+				i++
+				part = strings.TrimSpace(parts[i])
+				v, err := strconv.ParseInt(strings.ReplaceAll(part, ",", ""), 10, 64)
+				if err != nil {
+					help()
+					panic(err)
+				}
+				loan.Months = int(v)
+			case "payment":
+				i++
+				part = strings.TrimSpace(parts[i])
+				v, err := strconv.ParseFloat(strings.ReplaceAll(part, ",", ""), 64)
+				if err != nil {
+					help()
+					panic(err)
+				}
+				loan.Payment = v
+			case "starting":
+				i++
+				part = strings.TrimSpace(parts[i])
+				loan.StartDate = part
+			}
+		}
+	}
+	if loan.StartDate == "" {
+		loan.StartDate = time.Now().Format("2006-01-02")
+	}
+
+	for _, input := range args[1:] {
+		extra := Extra{}
+
+		input := strings.TrimSpace(input)
+		parts := strings.Split(input, " ")
+		for i := 0; i < len(parts); i++ {
+			part := strings.TrimSpace(parts[i])
+			if i == 0 {
+				v, err := strconv.ParseFloat(strings.ReplaceAll(part, ",", ""), 64)
+				if err != nil {
+					help()
+					panic(err)
+				}
+				extra.Amount = v
+			} else if i == 1 {
+				switch part {
+				case "once", "monthly":
+					extra.Frequency = part
+				default:
+					help()
+				}
+			} else {
+				switch part {
+				case "on":
+					i++
+					part = strings.TrimSpace(parts[i])
+					extra.StartDate = part
+				case "starting":
+					i++
+					part = strings.TrimSpace(parts[i])
+					extra.StartDate = part
+				case "ending":
+					i++
+					part = strings.TrimSpace(parts[i])
+					extra.EndDate = part
+				}
+			}
+		}
+
+		extras = append(extras, extra)
+	}
+
+	p := message.NewPrinter(language.English)
+
+	fmt.Printf("Loan:\n")
+	fmt.Printf("   Amount:   %12s $\n", p.Sprintf("%0.2f", loan.Amount))
+	fmt.Printf("   Rate:     %12s %%\n", p.Sprintf("%0.2f", loan.Rate))
+	fmt.Printf("   Months:   %12s\n", p.Sprintf("%0d", loan.Months))
+	fmt.Printf("   Payment:  %12s $\n", p.Sprintf("%0.2f", loan.Payment))
+	fmt.Printf("   Starting: %12s\n", loan.StartDate)
+	fmt.Printf("\n")
+
+	for _, extra := range extras {
+		fmt.Printf("Extra payment:\n")
+		fmt.Printf("   Amount:   %12s $ %s\n", p.Sprintf("%0.2f", extra.Amount), extra.Frequency)
+		if extra.StartDate != "" {
+			fmt.Printf("   Starting: %12s\n", extra.StartDate)
+		}
+		if extra.EndDate != "" {
+			fmt.Printf("   Ending:   %12s\n", extra.EndDate)
+		}
+		fmt.Printf("\n")
+	}
+
+	schedule := Calculate(loan, extras)
+
+	fmt.Printf("Schedule:\n")
+	fmt.Printf("%3s   %10s   %10s   %10s   %12s\n", "", "date", "principal", "interest", "remaining")
+	for i, payment := range schedule {
+		fmt.Printf("%3d   %10s   %10s   %10s   %12s\n", i, payment.Date.Format("2006-01-02"), p.Sprintf("%0.2f", payment.Principal), p.Sprintf("%0.2f", payment.Interest), p.Sprintf("%0.2f", payment.Remaining))
+	}
+	if len(schedule) > 0 {
+		fmt.Printf("----\n")
+		fmt.Printf("Total interest paid: %12s\n", p.Sprintf("%0.2f", schedule[len(schedule)-1].InterestPaid))
+	}
+}
+
+// Loan is a loan.
 type Loan struct {
 	Amount    float64
 	Rate      float64
@@ -49,6 +177,7 @@ type Loan struct {
 	StartDate string
 }
 
+// Extra payment.
 type Extra struct {
 	Frequency string
 	StartDate string
@@ -56,6 +185,7 @@ type Extra struct {
 	Amount    float64
 }
 
+// Payment on the schedule.
 type Payment struct {
 	Date          time.Time
 	Principal     float64
@@ -65,6 +195,7 @@ type Payment struct {
 	InterestPaid  float64
 }
 
+// Calculate a payment schedule.
 func Calculate(loan Loan, extras []Extra) []Payment {
 	startDate, err := time.Parse("2006-01-02", loan.StartDate)
 	if err != nil {
@@ -110,7 +241,7 @@ func Calculate(loan Loan, extras []Extra) []Payment {
 
 		var extraPrincipal float64
 		for _, extra := range extras {
-			if extra.Frequency == "monthly" && strings.Compare(currentDateString, extra.StartDate) >= 0 && strings.Compare(currentDateString, extra.EndDate) < 0 {
+			if extra.Frequency == "monthly" && (extra.StartDate == "" || strings.Compare(currentDateString, extra.StartDate) >= 0) && (extra.EndDate == "" || strings.Compare(currentDateString, extra.EndDate) < 0) {
 				extraPrincipal = extra.Amount
 			}
 		}
