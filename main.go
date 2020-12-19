@@ -20,7 +20,7 @@ loan-calculator <loan> [<payment> [...]]
    amount <amount> rate <rate> months <months> payment <payment> [starting <date>]
 
 <payment> is of the form:
-   <amount> monthly [starting <date>] [ending <date>]
+   <amount> monthly [starting <date>] [ending <date>|count <count>]
 	<amount> once on <date>
 
 Example:
@@ -114,6 +114,15 @@ func main() {
 				}
 			} else {
 				switch part {
+				case "count":
+					i++
+					part = strings.TrimSpace(parts[i])
+					v, err := strconv.ParseInt(strings.ReplaceAll(part, ",", ""), 10, 64)
+					if err != nil {
+						help()
+						panic(err)
+					}
+					extra.Count = int(v)
 				case "on":
 					i++
 					part = strings.TrimSpace(parts[i])
@@ -131,6 +140,22 @@ func main() {
 		}
 
 		extras = append(extras, extra)
+	}
+	for e := range extras {
+		if extras[e].StartDate == "" {
+			extras[e].StartDate = loan.StartDate
+		}
+		if extras[e].Count > 0 {
+			if extras[e].EndDate != "" {
+				help()
+			}
+			date, err := time.Parse("2006-01-02", extras[e].StartDate)
+			if err != nil {
+				panic(err)
+			}
+			date = date.AddDate(0, extras[e].Count, 0)
+			extras[e].EndDate = date.Format("2006-01-02")
+		}
 	}
 
 	p := message.NewPrinter(language.English)
@@ -180,6 +205,7 @@ type Loan struct {
 // Extra payment.
 type Extra struct {
 	Frequency string
+	Count     int
 	StartDate string
 	EndDate   string
 	Amount    float64
