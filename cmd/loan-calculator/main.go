@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	loancalc "github.com/tekkamanendless/loan-calculator"
 	"golang.org/x/text/language"
@@ -40,9 +39,6 @@ func main() {
 		fmt.Printf("Could not parse loan: %v", err)
 		help()
 	}
-	if loan.StartDate == "" {
-		loan.StartDate = time.Now().Format("2006-01-02")
-	}
 
 	var extras []loancalc.Extra
 	for _, input := range args[1:] {
@@ -53,22 +49,6 @@ func main() {
 		}
 
 		extras = append(extras, *extra)
-	}
-	for e := range extras {
-		if extras[e].StartDate == "" {
-			extras[e].StartDate = loan.StartDate
-		}
-		if extras[e].Count > 0 {
-			if extras[e].EndDate != "" {
-				help()
-			}
-			date, err := time.Parse("2006-01-02", extras[e].StartDate)
-			if err != nil {
-				panic(err)
-			}
-			date = date.AddDate(0, extras[e].Count, 0)
-			extras[e].EndDate = date.Format("2006-01-02")
-		}
 	}
 
 	p := message.NewPrinter(language.English)
@@ -84,11 +64,11 @@ func main() {
 	for _, extra := range extras {
 		fmt.Printf("Extra payment:\n")
 		fmt.Printf("   Amount:   %12s $ %s\n", p.Sprintf("%0.2f", extra.Amount), extra.Frequency)
-		if extra.StartDate != "" {
-			fmt.Printf("   Starting: %12s\n", extra.StartDate)
+		if !extra.StartDate.IsZero() {
+			fmt.Printf("   Starting: %12s\n", extra.StartDate.Format("2006-01-02"))
 		}
-		if extra.EndDate != "" {
-			fmt.Printf("   Ending:   %12s\n", extra.EndDate)
+		if !extra.EndDate.IsZero() {
+			fmt.Printf("   Ending:   %12s\n", extra.EndDate.Format("2006-01-02"))
 		}
 		fmt.Printf("\n")
 	}
