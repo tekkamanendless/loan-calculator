@@ -38,10 +38,19 @@ An extra-payment string looks like this:
 
 Examples:
 
-* Add another $52.52 per month in principal.
+* Add an additional $52.52 to principal per month.
    ```
    52.52 monthly
    ```
-* `12,000 once on 2020-11-10`
-* `5,000 once on 2020-12-20`
-* `100 monthly starting 2020-12-20 count 50`
+* Make a one-time $12,000 payment to principal on November 10, 2020.
+   ```
+   12,000 once on 2020-11-10
+   ```
+* Make a one-time $5,000 payment to principal on December 20, 2020.
+   ```
+   5,000 once on 2020-12-20
+   ```
+* Split that same $5,000 by making 50 additional monthly payments of $100.
+   ```
+   100 monthly starting 2020-12-20 count 50
+   ```
