@@ -1,3 +1,5 @@
+all: web
+
 .PHONY: clean
 clean:
 	rm -rf build
