@@ -54,3 +54,18 @@ Examples:
    ```
    100 monthly starting 2020-12-20 count 50
    ```
+
+## Development
+
+### GitHub Pages
+The live demo is hosted on GitHub pages.
+To build update them:
+
+```
+make web
+git checkout gh-pages
+cp build/* ./
+git add -A
+git commit -m "gh-pages update"
+git push
+```
