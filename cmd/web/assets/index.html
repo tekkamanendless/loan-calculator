@@ -6,33 +6,35 @@
 	<script src="wasm_exec.js"></script>
 	<script>
 		const go = new Go();
-		WebAssembly.instantiateStreaming(fetch("web.wasm"), go.importObject).then((result) => {
-			go.run(result.instance);
-		});
 
 		// init is called when the body has been loaded.
 		function init() {
 			console.log("init");
-			if (window.sessionStorage) {
-				let value = window.sessionStorage.getItem("inputs");
-				console.log("sessionStorage: inputs:", value);
-				if (value) {
-					let output = JSON.parse(value);
-					if (output && typeof output === 'object') {
-						let loanInput = document.querySelector('input[name="loan"]');
-						let extraInputs = document.querySelectorAll('input[name="extra"]');
+			WebAssembly.instantiateStreaming(fetch("web.wasm"), go.importObject).then((result) => {
+				go.run(result.instance);
 
-						if (output.loan) {
-							loanInput.value = output.loan;
-						}
-						if (Array.isArray(output.extras)) {
-							for (let i = 0; i < output.extras.length; i++) {
-								extraInputs[i].value = output.extras[i];
+				if (window.sessionStorage) {
+					let value = window.sessionStorage.getItem("inputs");
+					console.log("sessionStorage: inputs:", value);
+					if (value) {
+						let output = JSON.parse(value);
+						if (output && typeof output === 'object') {
+							let loanInput = document.querySelector('input[name="loan"]');
+							let extraInputs = document.querySelectorAll('input[name="extra"]');
+
+							if (output.loan) {
+								loanInput.value = output.loan;
+							}
+							if (Array.isArray(output.extras)) {
+								for (let i = 0; i < output.extras.length; i++) {
+									extraInputs[i].value = output.extras[i];
+								}
 							}
 						}
 					}
 				}
-			}
+				validateInputs();
+			});
 		}
 
 		function formatAmount(value) {
