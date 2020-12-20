@@ -10,6 +10,31 @@
 			go.run(result.instance);
 		});
 
+		// init is called when the body has been loaded.
+		function init() {
+			console.log("init");
+			if (window.sessionStorage) {
+				let value = window.sessionStorage.getItem("inputs");
+				console.log("sessionStorage: inputs:", value);
+				if (value) {
+					let output = JSON.parse(value);
+					if (output && typeof output === 'object') {
+						let loanInput = document.querySelector('input[name="loan"]');
+						let extraInputs = document.querySelectorAll('input[name="extra"]');
+
+						if (output.loan) {
+							loanInput.value = output.loan;
+						}
+						if (Array.isArray(output.extras)) {
+							for (let i = 0; i < output.extras.length; i++) {
+								extraInputs[i].value = output.extras[i];
+							}
+						}
+					}
+				}
+			}
+		}
+
 		function formatAmount(value) {
 			let testValue = 1.2;
 			let testString = testValue.toLocaleString();
@@ -61,10 +86,16 @@
 					extras.push(input.value);
 				}
 			});
-			return {
+			let output = {
 				loan: loan,
 				extras: extras,
 			};
+
+			if (window.sessionStorage) {
+				window.sessionStorage.setItem("inputs", JSON.stringify(output));
+			}
+
+			return output;
 		}
 
 		function calculate() {
@@ -155,7 +186,7 @@
 	</style>
 </head>
 
-<body>
+<body onload="init();">
 	<h2>Loan Calculator</h2>
 	<fieldset>
 		<legend>Loan information</legend>
