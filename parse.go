@@ -20,6 +20,9 @@ func ParseLoan(input string) (*Loan, error) {
 		switch part {
 		case "amount":
 			i++
+			if i >= len(parts) {
+				return nil, fmt.Errorf("missing amount")
+			}
 			part = strings.TrimSpace(parts[i])
 			v, err := strconv.ParseFloat(strings.ReplaceAll(part, ",", ""), 64)
 			if err != nil {
@@ -28,6 +31,9 @@ func ParseLoan(input string) (*Loan, error) {
 			loan.Amount = v
 		case "rate":
 			i++
+			if i >= len(parts) {
+				return nil, fmt.Errorf("missing rate")
+			}
 			part = strings.TrimSpace(parts[i])
 			v, err := strconv.ParseFloat(strings.ReplaceAll(part, ",", ""), 64)
 			if err != nil {
@@ -36,6 +42,9 @@ func ParseLoan(input string) (*Loan, error) {
 			loan.Rate = v
 		case "months":
 			i++
+			if i >= len(parts) {
+				return nil, fmt.Errorf("missing months")
+			}
 			part = strings.TrimSpace(parts[i])
 			v, err := strconv.ParseInt(strings.ReplaceAll(part, ",", ""), 10, 64)
 			if err != nil {
@@ -44,6 +53,9 @@ func ParseLoan(input string) (*Loan, error) {
 			loan.Months = int(v)
 		case "payment":
 			i++
+			if i >= len(parts) {
+				return nil, fmt.Errorf("missing payment")
+			}
 			part = strings.TrimSpace(parts[i])
 			v, err := strconv.ParseFloat(strings.ReplaceAll(part, ",", ""), 64)
 			if err != nil {
@@ -52,6 +64,9 @@ func ParseLoan(input string) (*Loan, error) {
 			loan.Payment = v
 		case "starting":
 			i++
+			if i >= len(parts) {
+				return nil, fmt.Errorf("missing starting")
+			}
 			part = strings.TrimSpace(parts[i])
 			v, err := time.Parse(DateFormat, part)
 			if err != nil {
@@ -95,6 +110,9 @@ func ParseExtra(input string) (*Extra, error) {
 			switch part {
 			case "count":
 				i++
+				if i >= len(parts) {
+					return nil, fmt.Errorf("missing count")
+				}
 				part = strings.TrimSpace(parts[i])
 				v, err := strconv.ParseInt(strings.ReplaceAll(part, ",", ""), 10, 64)
 				if err != nil {
@@ -106,6 +124,9 @@ func ParseExtra(input string) (*Extra, error) {
 				extra.Count = int(v)
 			case "on", "starting":
 				i++
+				if i >= len(parts) {
+					return nil, fmt.Errorf("missing %s", part)
+				}
 				part = strings.TrimSpace(parts[i])
 				v, err := time.Parse(DateFormat, part)
 				if err != nil {
@@ -114,6 +135,9 @@ func ParseExtra(input string) (*Extra, error) {
 				extra.StartDate = v
 			case "ending":
 				i++
+				if i >= len(parts) {
+					return nil, fmt.Errorf("missing ending")
+				}
 				part = strings.TrimSpace(parts[i])
 				v, err := time.Parse(DateFormat, part)
 				if err != nil {
@@ -124,8 +148,14 @@ func ParseExtra(input string) (*Extra, error) {
 		}
 	}
 
+	if extra.Frequency == "" {
+		return nil, fmt.Errorf("missing frequency")
+	}
 	if !extra.EndDate.IsZero() && extra.Count > 0 {
 		return nil, fmt.Errorf("cannot have both end date and count")
+	}
+	if extra.Frequency == "once" && extra.StartDate.IsZero() {
+		return nil, fmt.Errorf("missing start date")
 	}
 
 	return extra, nil

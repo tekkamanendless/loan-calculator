@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<title>Loan Calculator</title>
+	<script src="wasm_exec.js"></script>
+	<script>
+		const go = new Go();
+		WebAssembly.instantiateStreaming(fetch("web.wasm"), go.importObject).then((result) => {
+			go.run(result.instance);
+		});
+
+		function formatAmount(value) {
+			let testValue = 1.2;
+			let testString = testValue.toLocaleString();
+			let decimal = testString.replace("1", "").replace("2", "");
+
+			let prettyValue = parseFloat(parseFloat(value).toFixed(2)).toLocaleString();
+			let parts = prettyValue.split(decimal);
+			let leftPart = parts[0];
+			let rightPart = "";
+			if (parts.length == 2) {
+				rightPart = parts[1];
+			}
+			while (rightPart.length < 2) {
+				rightPart = rightPart + "0";
+			}
+			return leftPart + decimal + rightPart;
+		}
+
+		function validateInputs() {
+			let loan = "";
+			let extras = [];
+			{
+				let input = document.querySelector('input[name="loan"]');
+				loan = input.value;
+				if (loan == "") {
+					input.className = "";
+				} else {
+					let result = loancalc_validateLoan(loan);
+					if (!result.success) {
+						input.className = "red";
+					} else {
+						input.className = "green";
+					}
+				}
+			}
+
+			document.querySelectorAll('input[name="extra"]').forEach(input => {
+				let extra = input.value;
+				if (extra == "") {
+					input.className = "";
+				} else {
+					let result = loancalc_validateExtra(extra);
+					if (!result.success) {
+						input.className = "red";
+					} else {
+						input.className = "green";
+					}
+
+					extras.push(input.value);
+				}
+			});
+			return {
+				loan: loan,
+				extras: extras,
+			};
+		}
+
+		function calculate() {
+			console.log("calcuate");
+
+			let validation = validateInputs();
+			let loan = validation.loan;
+			let extras = validation.extras;
+			console.log("loan:", loan);
+			console.log("extras:", extras);
+
+			let targetElement = document.querySelector("#result");
+			try {
+				let result = loancalc_calculate(loan, ...extras);
+				if (!result.success) {
+					targetElement.className = "red";
+					targetElement.textContent = result.message;
+				} else {
+					console.log("schedule:", result.data);
+					targetElement.className = "";
+					targetElement.innerHTML = "";
+
+					let tableTemplate = document.querySelector("#templateTable");
+					console.log("tableTemplate:", tableTemplate);
+					let rowTemplate = document.querySelector("#templateRow");
+					console.log("rowTemplate:", rowTemplate);
+
+					let table = tableTemplate.content.firstElementChild.cloneNode(true);
+					console.log("table:", table);
+					let tbody = table.querySelector("tbody");
+					console.log("tbody:", tbody);
+
+					let payments = result.data;
+					for (let i = 0; i < payments.length; i++) {
+						let payment = payments[i];
+
+						let row = rowTemplate.content.firstElementChild.cloneNode(true);
+						let tds = row.querySelectorAll("td");
+						tds[0].textContent = payment.date;
+						tds[1].textContent = "$ " + formatAmount(payment.principal);
+						tds[2].textContent = "$ " + formatAmount(payment.interest);
+						tds[3].textContent = "$ " + formatAmount(payment.principalPaid);
+						tds[4].textContent = "$ " + formatAmount(payment.interestPaid);
+						tds[5].textContent = "$ " + formatAmount(payment.remaining);
+						tbody.appendChild(row);
+					}
+
+					targetElement.appendChild(table);
+				}
+			} catch (err) {
+				targetElement.className = "red";
+				targetElement.textContent = err;
+			}
+		}
+	</script>
+	<style>
+		.info {
+			font-size: 0.8em;
+		}
+
+		fieldset>div {
+			margin-bottom: 1em;
+		}
+
+		.green {
+			background-color: #8eec8e;
+		}
+
+		.red {
+			background-color: #ec8e8e;
+		}
+
+		#result {
+			margin-top: 2em;
+		}
+
+		#result td {
+			padding: 0.3em;
+		}
+
+		td.date {
+			text-align: right;
+		}
+
+		td.number {
+			text-align: right;
+		}
+	</style>
+</head>
+
+<body>
+	<h2>Loan Calculator</h2>
+	<fieldset>
+		<legend>Loan information</legend>
+		<div>
+			<b>Loan information:</b><br>
+			<input name="loan" placeholder="amount 39,125.00 rate 4.99 months 240 payment 187.48 starting 2019-10-01" size=100 oninput="validateInputs();"></input><br>
+			<span class="info">Example: <tt>amount 39,125.00 rate 4.99 months 240 payment 187.48 starting 2019-10-01</tt></span>
+		</div>
+		<div>
+			<b>Extra payments (if any):</b><br>
+			<input name="extra" placeholder="" size=100 oninput="validateInputs();"></input><br>
+			<input name="extra" placeholder="" size=100 oninput="validateInputs();"></input><br>
+			<input name="extra" placeholder="" size=100 oninput="validateInputs();"></input><br>
+			<input name="extra" placeholder="" size=100 oninput="validateInputs();"></input><br>
+			<input name="extra" placeholder="" size=100 oninput="validateInputs();"></input><br>
+			<input name="extra" placeholder="" size=100 oninput="validateInputs();"></input><br>
+			<input name="extra" placeholder="" size=100 oninput="validateInputs();"></input><br>
+			<input name="extra" placeholder="" size=100 oninput="validateInputs();"></input><br>
+			<input name="extra" placeholder="" size=100 oninput="validateInputs();"></input><br>
+			<input name="extra" placeholder="" size=100 oninput="validateInputs();"></input><br>
+			<span class="info">Example: <tt>52.52 monthly</tt></span><br>
+			<span class="info">Example: <tt>52.52 monthly starting 2020-01-01</tt></span><br>
+			<span class="info">Example: <tt>52.52 monthly starting 2020-01-01 ending 2025-01-01</tt></span><br>
+			<span class="info">Example: <tt>12,000 once on 2020-11-10</tt></span><br>
+		</div>
+	</fieldset>
+	<button onclick="calculate();">Calculate payment schedule</button>
+	<div id="result">
+	</div>
+	<template id="templateTable">
+		<table>
+			<thead>
+				<tr>
+					<th>Date</th>
+					<th>Principal</th>
+					<th>Interest</th>
+					<th>Total Principal Paid</th>
+					<th>Total Interest Paid</th>
+					<th>Remaining</th>
+				</tr>
+				</th>
+			<tbody>
+			</tbody>
+		</table>
+	</template>
+	<template id="templateRow">
+		<tr>
+			<td class="date"></td>
+			<td class="number"></td>
+			<td class="number"></td>
+			<td class="number"></td>
+			<td class="number"></td>
+			<td class="number"></td>
+		</tr>
+	</template>
+</body>
+
+</html>

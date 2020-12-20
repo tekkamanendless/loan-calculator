@@ -91,6 +91,9 @@ func Calculate(loan Loan, extras []Extra) []Payment {
 		if amountRemaining < principal {
 			principal = amountRemaining
 		}
+		if m+1 == loan.Months {
+			principal = amountRemaining
+		}
 		amountRemaining -= principal
 		interestPaid += interest
 		principalPaid += principal
